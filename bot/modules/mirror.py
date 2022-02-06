@@ -287,6 +287,12 @@ class MirrorListener:
                 pass
             del download_dict[self.message.message_id]
             count = len(download_dict)
+        if self.message.from_user.username:
+            uname = f"@{self.message.from_user.username}"
+        else:
+            uname = f'<a href="tg://user?id={self.message.from_user.id}">{self.message.from_user.first_name}</a>'
+        if uname is not None:
+            men = f'{uname} '    
         sendMessage(f"{self.tag} {e_str}", self.bot, self.update)
         if count == 0:
             self.clean()
@@ -297,6 +303,11 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
     mesg = update.message.text.split('\n')
     message_args = mesg[0].split(' ', maxsplit=1)
     name_args = mesg[0].split('|', maxsplit=1)
+    user_id = update.effective_user.id
+    bot_d = bot.get_me()
+    b_uname = bot_d.username
+    uname = f'<a href="tg://user?id={update.message.from_user.id}">{update.message.from_user.first_name}</a>'
+    uid= f"<a>{update.message.from_user.id}</a>"
     qbitsel = False
     is_gdtot = False
     try:
@@ -356,12 +367,30 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
                 link = file.get_file().download(custom_path=file_name)
             elif file.mime_type != "application/x-bittorrent":
                 listener = MirrorListener(bot, update, isZip, extract, isQbit, isLeech, pswd, tag)
+                tgs = sendMessage(f"<b>Processing Your File.....</b>", bot, update)
+                sleep(1)
                 tg_downloader = TelegramDownloadHelper(listener)
                 ms = update.message
                 tg_downloader.add_download(ms, f'{DOWNLOAD_DIR}{listener.uid}/', name)
+                editMessage(f"<b>{uname} has sent - </b>\n\n<b>Filename:</b> <code>{download_dict[listener.uid].name()}</code>\n\n<b>Type:</b> <code>{file.mime_type}</code>\n<b>Size:</b> {download_dict[listener.uid].size()}\n\nUser ID : {uid} \n\n", tgs)
+                sleep(1)
+                sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested Telegram File Has Been Added To The Status</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
+                if len(Interval) == 0:
+                        Interval.append(setInterval(DOWNLOAD_STATUS_UPDATE_INTERVAL, update_all_messages))
                 return
             else:
                 link = file.get_file().file_path
+                
+    else:
+        tag = None
+    if not bot_utils.is_url(link) and not bot_utils.is_magnet(link):
+        if isZip:
+            sendMessage(f"<b><i>No download source provided</i></b>\n\n<b>If you don't know how to use bots check others message</b>\n\n<b>Example :- /{BotCommands.ZipMirrorCommand} <i>(Your Torrent Magnet, GDrive Link, DDL Or Mega.nz Links)</i></b>\n<b><i>For Torrent And Telegram Files , Reply to the File with</i></b> /{BotCommands.ZipMirrorCommand}", bot, update)
+        elif extract:
+            sendMessage(f"<b><i>No download source provided</i></b>\n\n<b>If you don't know how to use bots check others message</b>\n\n<b>Example :- /{BotCommands.UnzipMirrorCommand} <i>(Your Torrent Magnet, GDrive Link, DDL Or Mega.nz Links)</i></b>\n<b><i>For Torrent And Telegram Files , Reply to the File with</i></b> /{BotCommands.UnzipMirrorCommand}", bot, update)
+        else:
+            sendMessage(f"<b><i>No download source provided</i></b>\n\n<b>If you don't know how to use bots check others message</b>\n\n<b>Example :- /{BotCommands.MirrorCommand} <i>(Your Torrent Magnet, DDL Or Mega.nz Links)</i></b>\n<b><i>For Torrent And Telegram Files , Reply to the File with</i></b> /{BotCommands.MirrorCommand}", bot, update)
+        return            
 
     if len(mesg) > 1:
         try:
@@ -431,7 +460,15 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
             gmsg += f"Use /{BotCommands.ZipMirrorCommand} to make zip of Google Drive folder\n\n"
             gmsg += f"Use /{BotCommands.UnzipMirrorCommand} to extracts Google Drive archive file"
             return sendMessage(gmsg, bot, update)
+        gmgs = sendMessage("<b>Processing Your G-Drive Link...</b>", bot, update)
+        sleep(2)
+        editMessage(f"{uname} has sent - \n\n<code>{link}</code>\n\nUser ID : {uid}\n\n", gmgs)
+        sleep(1)    
         Thread(target=add_gd_download, args=(link, listener, is_gdtot)).start()
+        if not isZip:
+            sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested G-Drive File Has Been Added To The Status For Extracting</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
+        else:
+            sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested G-Drive Folder Has Been Added To The Status For Archiving</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
 
     elif is_mega_link(link):
         if BLOCK_MEGA_LINKS:
@@ -441,13 +478,31 @@ def _mirror(bot, update, isZip=False, extract=False, isQbit=False, isLeech=False
         if link_type == "folder" and BLOCK_MEGA_FOLDER:
             sendMessage("Mega folder are blocked!", bot, update)
         else:
+            mgs = sendMessage("<b>Processing Your Mega.nz Link...</b>", bot, update)
+            sleep(2)
             Thread(target=add_mega_download, args=(link, f'{DOWNLOAD_DIR}{listener.uid}/', listener)).start()
+            editMessage(f"{uname} has sent - \n\n<code>{link}</code>\n\nUser ID : {uid}\n\n", mgs)
+            sleep(1)
+            if link_type == "folder":
+                sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested MEGA Folder Has Been Added To The Status</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
+            else:
+                sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested MEGA File Has Been Added To The Status</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
 
     elif isQbit and (is_magnet(link) or ospath.exists(link)):
+        gmgs = sendMessage("<b>Processing Your Torrent/Magnet...</b>", bot, update)
+        sleep(2)
+        editMessage(f"{uname} has sent - \n\n<code>{link}</code>\n\nUser ID : {uid}\n\n", gmgs)
+        sleep(1)
         Thread(target=add_qb_torrent, args=(link, f'{DOWNLOAD_DIR}{listener.uid}', listener, qbitsel)).start()
+        sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested Torrent/Magnet Has Been Added To The Status</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
 
-    else:
+    else: 
+        gmgs = sendMessage("<b>Processing Your Torrent/Magnet...</b>", bot, update)
+        sleep(2)
+        editMessage(f"{uname} has sent - \n\n<code>{link}</code>\n\nUser ID : {uid}\n\n", gmgs)
+        sleep(1)
         Thread(target=add_aria2c_download, args=(link, f'{DOWNLOAD_DIR}{listener.uid}', listener, name)).start()
+        sendMessage(f"<b>Hei {uname}</b>\n\n<b>Your Requested Torrent/Magnet Has Been Added To The Status</b>\n\n<b>Use /{BotCommands.StatusCommand} To Check Your Progress</b>\n", bot, update)
 
 def mirror(update, context):
     _mirror(context.bot, update)
