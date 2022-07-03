@@ -77,16 +77,16 @@ class MirrorListener:
                 with download_dict_lock:
                     download_dict[self.uid] = ZipStatus(name, m_path, size)
                 pswd = self.pswd
-                path = m_path + ".zip"
+                path = f"{m_path}.zip"
                 LOGGER.info(f'Zip: orig_path: {m_path}, zip_path: {path}')
                 if pswd is not None:
                     if self.isLeech and int(size) > TG_SPLIT_SIZE:
-                        path = m_path + ".zip"
+                        path = f"{m_path}.zip"
                         srun(["7z", f"-v{TG_SPLIT_SIZE}b", "a", "-mx=0", f"-p{pswd}", path, m_path])
                     else:
                         srun(["7z", "a", "-mx=0", f"-p{pswd}", path, m_path])
                 elif self.isLeech and int(size) > TG_SPLIT_SIZE:
-                    path = m_path + ".zip"
+                    path = f"{m_path}.zip"
                     srun(["7z", f"-v{TG_SPLIT_SIZE}b", "a", "-mx=0", path, m_path])
                 else:
                     srun(["7z", "a", "-mx=0", path, m_path])
